@@ -1,0 +1,141 @@
+---
+title: "Relatório Projeto Estatística"
+author: "Juliana Andresa Vieira de Lima"
+date: "25/01/2023"
+output: html_document
+---
+
+## Importando bibliotecas
+```{r, warning = FALSE, message = FALSE}
+library(readxl)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+## Importando o arquivo de xlsx "sp_beaches"  
+Importei o arquivo do excel utilizando a função `read_excel`. Dentro da função passei o caminho da pasta onde meu projeto está armazenado.
+
+`df_beaches=read_excel(path = "C:/Users/julia/OneDrive/Documentos/Juliana/EstatisticaProjeto/sp_beaches.xlsx")`
+
+```{r, echo = FALSE}
+df_beaches <- read_excel("sp_beaches.xlsx")
+```
+
+### Filtrando cidade Peruíbe  
+
+ - Usando a função `filter` foi realizado o filtro da tabela `df_beaches`. Criei uma tabela de nome `filtrados` para armazenar apenas os dados referente á **Cidade de Peruíbe**.  
+ - No mesmo código utilizei a função `mutate` e `as.numeric` modificando o **Enterococcus** para números inteiros.  
+**Veja a tabela a seguir :**  
+
+```{r, echo = FALSE}
+filtrados = df_beaches %>% filter(City == "PERUÍBE") %>% 
+  mutate(Enterococcus = as.numeric(Enterococcus))
+
+library(magrittr)
+library(rmarkdown)
+paged_table(filtrados)
+```
+
+## 1ª Questão:  
+* Criei uma tabela chamada `peruibe` para agrupar meus dados por praia. Todos os dados foram provenientes da tabela *filtrados*
+* A tabela foi composta dos seguintes cálculos para cada praia:
+    + **Média:** função `mean`
+    + **Desvio-padrão:** função `sd`
+    + **Mediana:** função `median`
+    + **Q1:** função `quantile` + `probs = 0.25`, primeiro quartil referente á 25% dos dados
+    + **Q3:** função `quantile` + `probs = 0.75`, terceiro quartil referente á 75% dos dados
+    + **Mínimo:** função `min`
+    + **Máximo:** função `max`
+* Na mesma tabela adicionei a função `contagem` para facilitar no próximo passo
+
+```{r, echo = FALSE}
+peruibe <- filtrados %>% 
+  group_by(Beach) %>% 
+  summarise(media = mean(Enterococcus), 
+            desvioPadrao = sd(Enterococcus),
+            mediana = median(Enterococcus), 
+            q1 = quantile(Enterococcus, probs = 0.25),
+            q3 = quantile(Enterococcus, probs = 0.75),
+            minimo = min(Enterococcus),
+            maximo = max(Enterococcus),
+            contagem = n())
+
+library(magrittr)
+library(rmarkdown)
+paged_table(peruibe)
+```
+
+**Observações**:    
+- A praia de *PERUÍBE (AV. S. JOÃO), PERUÍBE (BALN. SÃO JOÃO BATISTA)* e *PERUÍBE (PARQUE TURÍSTICO)* estão em mesma quantidade, igual a **463**, porém os resultados de **Média**, **Mediana**,**Q1** e **Q3** estão diferentes. Por outro lado o **Desvio- Padrão** se aproxima uma da outra, **Mínimo** são iguais e **Máximo** apenas uma difere das demais.
+
+## 2ª Questão - Gráfico de Barras  
+* Primeiramente criei a tabela `dados` para armazenar apenas as Praias de Peruíbe, sua respectiva contagem e frequência.  
+* Para adicionar a frequência na tabela dividi a **contagem** pela **soma das contagens**(`contagem/sum(contagem)`), em seguida utilizei a função `Frequencia = round(Frequencia*100,2)`. Veja a seguir:  
+
+```{r, echo = FALSE}
+dados <- peruibe %>% 
+  summarise(Beach, contagem) %>% 
+  mutate(Frequencia = contagem/sum(contagem)) %>%  
+  mutate(Frequencia = round(Frequencia*100,2))
+
+library(magrittr)
+library(rmarkdown)
+paged_table(dados)
+```
+
+* O gráfico a seguir representa as praias de peruíbe baseadas em maior e menor quantidade de amostras
+* As porcentagens significam as frequências da tabela anterior
+* É possível observar que praias com igual contagem são definidas pela mesma frequência e quanto menor a contagem menor será sua frequência.
+
+```{r, echo = FALSE}
+library(ggplot2)
+library(tidyverse)
+
+dados %>% 
+  ggplot(aes(x= reorder(Beach, -contagem), y = contagem, fill =  Beach)) + 
+  geom_bar(stat = 'identity') +
+  labs(title = "Gráfico de Barras", subtitle = "Praias de Peruíbe")+
+  geom_text(aes(y = contagem, label = Frequencia), vjust = -0.2,
+            position = position_dodge(width = 1)) +
+  theme_light(base_size = 8)
+```
+
+## 3ª Questão - Gráfico de Pizza  
+* Igual a questão anterior, mas apresentada no formato de gráfico pizza.
+
+```{r, echo =  FALSE}
+dados %>% 
+  ggplot(aes(x= "", y = contagem, fill = Beach)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Gráfico de Pizza", subtitle = "Praias de Peruíbe")+
+  coord_polar("y", start=0)+
+  geom_text(aes(x ="", y= contagem, label = Frequencia),
+              position = position_stack(vjust = 0.5))+
+  theme_void()
+```
+
+## 4ª Questão - Histograma  
+* O pico de dados ocorre em cerca de 0 Enterococcus. A dispersão de dados é a partir de cerca de 0 a 1200 Enterococcus.
+* Dados assimétricos,indicando que os dados podem não ser normalmente distribuídos.
+* Ajuste de distribuição não é bom.
+
+```{r, echo =  FALSE, message = FALSE}
+filtrados %>%
+  ggplot(aes(x = Enterococcus)) +
+  geom_histogram(fill = 'dark blue', color = 'black')+
+  ggtitle("Histograma Enterococos Peruíbe")
+```
+
+## 5ª Questão - Box-Plot  
+* De acordo com a disposição do Box-Plot é possível observar que os dados são assimétricos positivos.
+* Os valores discrepantes(outliers) são caracterizados por limites superiores, estando acima do limite de detecção de outliers.
+* Podemos concluir que a praia de *PERUÍBE (AV. S. JOÃO)* apresenta maior variabilidade do que as outras praias, e a praia de *GUARAÚ* apresenta menor variabilidade.
+
+```{r, echo =  FALSE, message = FALSE, results='hide'}
+filtrados %>% 
+  ggplot(aes(x=Beach, y=Enterococcus, fill = Beach))+
+  geom_boxplot()+
+  theme_grey(base_size = 8)
+```
